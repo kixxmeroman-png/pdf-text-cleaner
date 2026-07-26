@@ -261,7 +261,7 @@
   <div class="info-footer">
     <strong>정리 규칙 안내</strong>
     <ul>
-      <li>줄바꿈 유지: 원본의 행과 문단 구조를 최대한 보존하면서 읽기 쉽게 정돈합니다.</li>
+      <li>문단 구분 빈 줄 추가: 문장이 완전히 끝난 지점에는 빈 줄(엔터)을 추가하여 문단 간 구분을 명확히 합니다.</li>
       <li>어절 끊김 연결: PDF 줄바꿈으로 인해 단어 중간이나 문장 중간이 끊긴 경우에만 자연스럽게 이어줍니다.</li>
       <li>표/목록 및 특수문자 보호: 표 형태의 텍스트나 `」` 등의 기호가 포함된 줄바꿈이 손실되지 않도록 보호합니다.</li>
       <li>각주 및 페이지 번호: 불필요한 페이지 번호는 삭제하고 하단 각주는 모아서 정리합니다.</li>
@@ -317,7 +317,7 @@
     }
   });
 
-  // 안전한 줄바꿈 및 끊김 정제 알고리즘
+  // 안전한 줄바꿈 및 문단별 엔터 정제 알고리즘
   function cleanSmartLineBreaks(rawText) {
     if (!rawText) return '';
 
@@ -346,58 +346,56 @@
         continue;
       }
 
-      processedLines.push(line); // 원본 공백 및 들여쓰기 구조 보존
+      processedLines.push(line);
     }
 
-    let resultLines = [];
+    let resultParagraphs = [];
     let buffer = "";
 
-    // 2단계: 문장 중간 끊김만 선택적으로 이어붙이기
+    // 2단계: 문장 중간 끊김 연결 및 문단 구분 처리
     for (let i = 0; i < processedLines.length; i++) {
       let currentLine = processedLines[i];
       let trimmedCurrent = currentLine.trim();
 
       if (trimmedCurrent === "") {
         if (buffer !== "") {
-          resultLines.push(buffer);
+          resultParagraphs.push(buffer);
           buffer = "";
         }
-        resultLines.push(""); // 빈 줄(문단 간격) 유지
         continue;
       }
 
       if (buffer === "") {
-        buffer = currentLine;
+        buffer = trimmedCurrent;
       } else {
         let trimmedBuffer = buffer.trim();
         
-        // 끊김 판정 기준: 
-        // 1) 버퍼의 끝이 마침표(.), 물음표(?), 느낌표(!), 닫는 인용부호(」, 』, ’, ”) 등으로 끝나지 않고
-        // 2) 다음 줄이 새로운 문장이나 표/목록/특수기호로 시작하지 않는 경우에만 연결
+        // 문장 종결 판정 기호: 마침표, 물음표, 느낌표, 닫는 괄호, 닫는 인용부호(」, 』, ’, ”) 등
         const endsWithPunctuation = /[.!?\)\]\}"’\”」』]$/.test(trimmedBuffer);
         const startsWithNewContext = /^([\d\-*•①-⑨「『「“‘]|[\w가-힣]+\t|[A-Za-z0-9]+\.)/.test(trimmedCurrent);
 
         if (!endsWithPunctuation && !startsWithNewContext) {
-          // 중간 끊김으로 판단하여 공백 하나를 두고 이어붙임
+          // 문장 중간 끊김: 띄어쓰기 한 칸 추가하여 하나의 문단으로 이어줌
           buffer = trimmedBuffer + " " + trimmedCurrent;
         } else {
-          // 온전한 줄바꿈 구간으로 판단하여 이전 버퍼를 밀어내고 새 줄 시작
-          resultLines.push(buffer);
-          buffer = currentLine;
+          // 문장 완결 또는 새 문맥 시작: 기존 문단을 저장하고 새로 시작
+          resultParagraphs.push(buffer);
+          buffer = trimmedCurrent;
         }
       }
     }
 
     if (buffer !== "") {
-      resultLines.push(buffer);
+      resultParagraphs.push(buffer);
     }
 
-    let finalJoin = resultLines.join('\n');
+    // 3단계: 각 문단 사이에 빈 줄(\n\n)을 추가하여 문단 구분 적용
+    let finalJoin = resultParagraphs.join('\n\n');
 
-    // 3단계: 연속된 빈 줄을 최대 2개로 정돈
+    // 4단계: 연속된 3개 이상의 빈 줄 정돈
     finalJoin = finalJoin.replace(/\n{3,}/g, '\n\n');
 
-    // 4단계: 각주가 존재할 경우 하단에 모아주기
+    // 5단계: 각주 정리 추가
     let finalOutput = finalJoin.trim();
     if (footnotes.length > 0) {
       finalOutput += '\n\n----------------------------------------\n[각주 모음]\n' + footnotes.join('\n');
@@ -414,7 +412,7 @@
     }
     const result = cleanSmartLineBreaks(raw);
     outputText.value = result;
-    statusMsg.textContent = '줄바꿈 및 문단 정돈이 완료되었습니다.';
+    statusMsg.textContent = '줄바꿈 및 문단별 엔터 정돈이 완료되었습니다.';
   }
 
   function copyResult() {
