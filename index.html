@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PDF 정리기</title>
+  <title>PDF 및 텍스트 줄바꿈 정돈기</title>
   
   <!-- Pretendard 폰트 CDN -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
@@ -13,11 +13,11 @@
   
   <style>
     :root {
-      --primary-color: #3b82f6;
-      --primary-hover: #2563eb;
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
       --bg-color: #f8fafc;
       --card-bg: #ffffff;
-      --border-color: #e2e8f0;
+      --border-color: #cbd5e1;
       --border-focus: #93c5fd;
       --text-main: #0f172a;
       --text-muted: #64748b;
@@ -44,7 +44,7 @@
       margin: 0 auto;
       background-color: var(--card-bg);
       border-radius: var(--radius-lg);
-      border: 1px solid var(--border-color);
+      border: 1px solid #e2e8f0;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
       padding: 36px;
     }
@@ -97,7 +97,7 @@
 
     .file-input-btn:hover {
       background-color: #f8fafc;
-      border-color: #cbd5e1;
+      border-color: #94a3b8;
     }
 
     input[type="file"] {
@@ -147,7 +147,7 @@
 
     textarea:focus {
       border-color: var(--border-focus);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
     }
 
     textarea[readonly] {
@@ -199,7 +199,7 @@
 
     .btn-outline:hover {
       background-color: #f8fafc;
-      border-color: #cbd5e1;
+      border-color: #94a3b8;
     }
 
     .info-footer {
@@ -208,7 +208,7 @@
       background-color: #f8fafc;
       padding: 16px 20px;
       border-radius: var(--radius-md);
-      border: 1px solid var(--border-color);
+      border: 1px solid #e2e8f0;
     }
 
     .info-footer strong {
@@ -261,10 +261,10 @@
   <div class="info-footer">
     <strong>정리 규칙 안내</strong>
     <ul>
-      <li>중간 끊김 보정: 문장 중간에서 끊긴 줄만 자연스럽게 연결합니다.</li>
-      <li>문장 및 기호 종결 보정: 마침표, 인용 부호(」, ”, 등), 괄호 뒤의 줄바꿈 및 단락 간격을 정확히 유지합니다.</li>
-      <li>표 및 목록 보존: 숫자/기호 항목이나 탭 구분 표 형식은 연결하지 않고 원래 라인을 유지합니다.</li>
-      <li>각주 및 페이지 번호: 페이지 번호는 자동 삭제되며, 하단 각주는 모아서 별도로 정리합니다.</li>
+      <li>줄바꿈 유지: 원본의 행과 문단 구조를 최대한 보존하면서 읽기 쉽게 정돈합니다.</li>
+      <li>어절 끊김 연결: PDF 줄바꿈으로 인해 단어 중간이나 문장 중간이 끊긴 경우에만 자연스럽게 이어줍니다.</li>
+      <li>표/목록 및 특수문자 보호: 표 형태의 텍스트나 `」` 등의 기호가 포함된 줄바꿈이 손실되지 않도록 보호합니다.</li>
+      <li>각주 및 페이지 번호: 불필요한 페이지 번호는 삭제하고 하단 각주는 모아서 정리합니다.</li>
     </ul>
   </div>
 </div>
@@ -317,24 +317,23 @@
     }
   });
 
-  // 스마트 문맥 인식 정제 알고리즘
+  // 안전한 줄바꿈 및 끊김 정제 알고리즘
   function cleanSmartLineBreaks(rawText) {
     if (!rawText) return '';
 
     let rawLines = rawText.split(/\r?\n/);
-    let cleanedLines = [];
+    let processedLines = [];
     let footnotes = [];
 
     const pageNumPattern = /^(\s*[-~—]?\s*\d+\s*[-~—]?\s*|\s*page\s*\d+\s*|\s*\d+\s*\/\s*\d+\s*)$/i;
     const footnotePattern = /^\s*(\d+[\)\.]|\[\d+\]|\*\d+|\d+방)\s+/;
-    // 표 구분자나 목록 번호 패턴
-    const tableOrListPattern = /^(\s*[\d\w가-힣]+[\t|:]|\s*[-*•①-⑨]\s+|\s*\d+[\.\)])/;
 
+    // 1단계: 불필요한 페이지 번호 및 각주 분리
     for (let line of rawLines) {
       let trimmed = line.trim();
 
       if (!trimmed) {
-        cleanedLines.push('');
+        processedLines.push('');
         continue;
       }
 
@@ -347,49 +346,59 @@
         continue;
       }
 
-      cleanedLines.push(trimmed);
+      processedLines.push(line); // 원본 공백 및 들여쓰기 구조 보존
     }
 
-    let text = cleanedLines.join('\n');
+    let resultLines = [];
+    let buffer = "";
 
-    // 1. 단어 중간 어절 잘림 연결 (예: 합\n니다 -> 합니다)
-    text = text.replace(/([가-힣,])\n([가-힣])/g, '$1$2');
+    // 2단계: 문장 중간 끊김만 선택적으로 이어붙이기
+    for (let i = 0; i < processedLines.length; i++) {
+      let currentLine = processedLines[i];
+      let trimmedCurrent = currentLine.trim();
 
-    // 2. 종결 문자 패턴 정의
-    // 일반 마침표, 물음표, 느낌표, 닫는 괄호, 닫는 낫표(」, 』, ’, ”) 등
-    const endPunctuation = '[.!?\)\]\}"’\”」』]';
-    const startPunctuation = '[가-힣a-zA-Z0-9\(‘“「『]';
-
-    // 표나 목록 구조 보호: 표/목록으로 시작하는 줄 앞에서는 줄바꿈 유지
-    text = text.split('\n').reduce((acc, line, idx, arr) => {
-      if (idx === 0) return line;
-
-      let prevLine = arr[idx - 1].trim();
-      let currLine = line.trim();
-
-      if (!prevLine || !currLine) {
-        return acc + '\n' + line;
+      if (trimmedCurrent === "") {
+        if (buffer !== "") {
+          resultLines.push(buffer);
+          buffer = "";
+        }
+        resultLines.push(""); // 빈 줄(문단 간격) 유지
+        continue;
       }
 
-      // 이전 줄이 종결 기호로 끝나거나, 다음 줄이 목록/표 패턴이면 줄바꿈 보존
-      const endsWithSentenceEnd = new RegExp(endPunctuation + '$').test(prevLine);
-      const isNextTableOrList = tableOrListPattern.test(currLine);
-
-      if (endsWithSentenceEnd || isNextTableOrList) {
-        return acc + '\n\n' + line;
+      if (buffer === "") {
+        buffer = currentLine;
       } else {
-        return acc + ' ' + line;
+        let trimmedBuffer = buffer.trim();
+        
+        // 끊김 판정 기준: 
+        // 1) 버퍼의 끝이 마침표(.), 물음표(?), 느낌표(!), 닫는 인용부호(」, 』, ’, ”) 등으로 끝나지 않고
+        // 2) 다음 줄이 새로운 문장이나 표/목록/특수기호로 시작하지 않는 경우에만 연결
+        const endsWithPunctuation = /[.!?\)\]\}"’\”」』]$/.test(trimmedBuffer);
+        const startsWithNewContext = /^([\d\-*•①-⑨「『「“‘]|[\w가-힣]+\t|[A-Za-z0-9]+\.)/.test(trimmedCurrent);
+
+        if (!endsWithPunctuation && !startsWithNewContext) {
+          // 중간 끊김으로 판단하여 공백 하나를 두고 이어붙임
+          buffer = trimmedBuffer + " " + trimmedCurrent;
+        } else {
+          // 온전한 줄바꿈 구간으로 판단하여 이전 버퍼를 밀어내고 새 줄 시작
+          resultLines.push(buffer);
+          buffer = currentLine;
+        }
       }
-    });
+    }
 
-    // 3. 연속된 빈 줄을 2개로 정돈 (문단 간격 확보)
-    text = text.replace(/\n{3,}/g, '\n\n');
+    if (buffer !== "") {
+      resultLines.push(buffer);
+    }
 
-    // 4. 다중 공백 정돈
-    text = text.replace(/ {2,}/g, ' ');
+    let finalJoin = resultLines.join('\n');
 
-    // 5. 각주 정리 추가
-    let finalOutput = text.trim();
+    // 3단계: 연속된 빈 줄을 최대 2개로 정돈
+    finalJoin = finalJoin.replace(/\n{3,}/g, '\n\n');
+
+    // 4단계: 각주가 존재할 경우 하단에 모아주기
+    let finalOutput = finalJoin.trim();
     if (footnotes.length > 0) {
       finalOutput += '\n\n----------------------------------------\n[각주 모음]\n' + footnotes.join('\n');
     }
