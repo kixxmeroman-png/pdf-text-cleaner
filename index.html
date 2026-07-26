@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PDF & 텍스트 줄바꿈 정돈 및 각주 정리기</title>
+  <title>PDF 및 텍스트 줄바꿈 정돈 및 각주 정리기</title>
   
   <!-- Pretendard 폰트 CDN -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
@@ -212,12 +212,12 @@
 
 <div class="container">
   <header>
-    <h1>📄 PDF & 텍스트 줄바꿈 정돈기</h1>
-    <p>PDF를 올리거나 텍스트를 붙여넣으면 어색하게 중간에 끊긴 줄바꿈만 정돈하고 문장 단위 줄바꿈은 유지합니다.</p>
+    <h1>PDF 및 텍스트 줄바꿈 정돈기</h1>
+    <p>PDF를 올리거나 텍스트를 붙여넣으면 중간 끊김 정돈, 문단별 간격 추가 및 각주 정리를 수행합니다.</p>
   </header>
 
   <div class="upload-section">
-    <label for="pdf-upload" class="file-input-btn">📁 PDF 파일 불러오기</label>
+    <label for="pdf-upload" class="file-input-btn">PDF 파일 불러오기</label>
     <input type="file" id="pdf-upload" accept="application/pdf">
     <span id="file-name" style="margin-left: 10px; color: var(--text-sub); font-size: 0.9rem;">선택된 파일 없음</span>
   </div>
@@ -229,24 +229,24 @@
     </div>
     <div class="editor-box">
       <label for="output-text">정돈된 텍스트</label>
-      <textarea id="output-text" placeholder="줄바꿈 및 각주 정리 결과가 여기에 표시됩니다..." readonly></textarea>
+      <textarea id="output-text" placeholder="줄바꿈, 문단 간격 및 각주 정리 결과가 여기에 표시됩니다..." readonly></textarea>
     </div>
   </div>
 
   <div class="status-msg" id="status-msg"></div>
 
   <div class="btn-group">
-    <button class="btn-primary" onclick="processText()">✨ 스마트 줄바꿈 정돈하기</button>
-    <button class="btn-secondary" onclick="checkSpelling()">🔍 맞춤법 검사 (부산대 검사기 연결)</button>
-    <button class="btn-outline" onclick="copyResult()">📋 결과 복사</button>
-    <button class="btn-outline" onclick="downloadTxt()">💾 txt 파일로 저장</button>
+    <button class="btn-primary" onclick="processText()">스마트 줄바꿈 정돈하기</button>
+    <button class="btn-secondary" onclick="checkSpelling()">맞춤법 검사 (부산대 검사기 연결)</button>
+    <button class="btn-outline" onclick="copyResult()">결과 복사</button>
+    <button class="btn-outline" onclick="downloadTxt()">txt 파일로 저장</button>
   </div>
 
   <div class="info-footer">
-    💡 <strong>안내:</strong><br>
-    - **중간 끊김 정돈**: 마침표(`.`, `?`, `!`) 없이 중간에서 끊긴 줄만 띄어쓰기 또는 연결 처리합니다.<br>
-    - **문장 줄바꿈 유지**: 완결된 문장 뒤의 엔터(줄바꿈)는 지우지 않고 그대로 유지하여 읽기 편하게 보존합니다.<br>
-    - **페이지 번호 & 각주**: 페이지 번호는 자동 제거되고 각주는 텍스트 하단으로 모입니다.
+    <strong>안내사항</strong><br>
+    - 중간 끊김 정돈: 마침표 없이 중간에서 끊긴 줄만 띄어쓰기 또는 연결 처리합니다.<br>
+    - 문단 구분: 문장이 완전히 끝난 지점에는 엔터(빈 줄)를 추가하여 문단 간 구분을 명확히 합니다.<br>
+    - 페이지 번호 및 각주: 페이지 번호는 자동 제거되고 각주는 텍스트 하단으로 모입니다.
   </div>
 </div>
 
@@ -280,15 +280,15 @@
       }
 
       inputText.value = fullText.trim();
-      statusMsg.textContent = '✅ PDF 텍스트 추출 완료!';
+      statusMsg.textContent = 'PDF 텍스트 추출 완료';
       processText();
     } catch (err) {
       console.error(err);
-      statusMsg.textContent = '❌ PDF를 읽는 도중 오류가 발생했습니다.';
+      statusMsg.textContent = 'PDF를 읽는 도중 오류가 발생했습니다.';
     }
   });
 
-  // 스마트 줄바꿈 및 각주 정제 알고리즘
+  // 스마트 줄바꿈 및 문단 정제 알고리즘
   function cleanSmartLineBreaks(rawText) {
     if (!rawText) return '';
 
@@ -304,16 +304,16 @@
       let trimmed = line.trim();
 
       if (!trimmed) {
-        cleanedLines.push(''); // 빈 줄 보존
+        cleanedLines.push('');
         continue;
       }
 
       if (pageNumPattern.test(trimmed)) {
-        continue; // 페이지 번호 삭제
+        continue;
       }
 
       if (footnotePattern.test(trimmed)) {
-        footnotes.push(trimmed); // 각주 모음
+        footnotes.push(trimmed);
         continue;
       }
 
@@ -325,14 +325,19 @@
     // 1. 단어 중간에 어절이 잘린 한글 연결 (예: 합\n니다 -> 합니다)
     text = text.replace(/([가-힣,])\n([가-힣])/g, '$1$2');
 
-    // 2. 마침표나 종결 부호(. ! ? " ')로 끝나지 않고 중간에서 끊긴 줄만 띄어쓰기로 연결
-    // 문장이 끝난 줄(마침표 뒤 엔터)은 줄바꿈 유지
+    // 2. 마침표나 종결 부호(. ! ? " ') 없이 중간에서 끊긴 줄만 띄어쓰기로 연결
     text = text.replace(/([^.!?\n"'\)])\n([가-힣a-zA-Z0-9])/g, '$1 $2');
 
-    // 3. 다중 공백 정리
+    // 3. 문장이 완결된 지점(. ! ?) 뒤의 줄바꿈은 문단 구분을 위해 빈 줄(\n\n)로 처리
+    text = text.replace(/([.!?])\n/g, '$1\n\n');
+
+    // 4. 연속된 3개 이상의 빈 줄은 2개로 정돈
+    text = text.replace(/\n{3,}/g, '\n\n');
+
+    // 5. 다중 공백 정리
     text = text.replace(/ +/g, ' ');
 
-    // 4. 각주 하단 모음 추가
+    // 6. 각주 하단 모음 추가
     let finalOutput = text.trim();
     if (footnotes.length > 0) {
       finalOutput += '\n\n----------------------------------------\n[각주 모음]\n' + footnotes.join('\n');
@@ -350,7 +355,7 @@
     }
     const result = cleanSmartLineBreaks(raw);
     outputText.value = result;
-    statusMsg.textContent = '✨ 문맥을 살린 줄바꿈 정돈이 완료되었습니다!';
+    statusMsg.textContent = '문맥을 살린 줄바꿈 및 문단 정돈 완료';
   }
 
   // 부산대 맞춤법 검사기 연동
@@ -362,7 +367,7 @@
     }
 
     navigator.clipboard.writeText(text).then(() => {
-      alert('정돈된 텍스트가 클립보드에 복사되었습니다!\n열리는 부산대 맞춤법 검사기 페이지에 붙여넣기(Ctrl+V)하여 검사하세요.');
+      alert('정돈된 텍스트가 클립보드에 복사되었습니다.\n열리는 부산대 맞춤법 검사기 페이지에 붙여넣기(Ctrl+V)하여 검사하세요.');
       window.open('https://speller.cs.pusan.ac.kr/', '_blank');
     }).catch(() => {
       window.open('https://speller.cs.pusan.ac.kr/', '_blank');
@@ -376,7 +381,7 @@
       return;
     }
     navigator.clipboard.writeText(outputText.value).then(() => {
-      statusMsg.textContent = '📋 정돈된 텍스트가 클립보드에 복사되었습니다!';
+      statusMsg.textContent = '정돈된 텍스트가 클립보드에 복사되었습니다.';
     });
   }
 
@@ -393,7 +398,7 @@
     link.download = '정돈된_텍스트.txt';
     link.click();
     URL.revokeObjectURL(link.href);
-    statusMsg.textContent = '💾 txt 파일로 저장되었습니다!';
+    statusMsg.textContent = 'txt 파일로 저장되었습니다.';
   }
 </script>
 
